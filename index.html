@@ -363,10 +363,12 @@ const DAYS = [
           timer:{phases:[{label:"INTENSO",secs:40,color:"#F26B4E"},{label:"RECUPERAÇÃO",secs:20,color:"#4EC9A0"}],rounds:20}},
       ]},
       {title:"Core",time:"15 min",exercises:[
-        {id:"s2e3",name:"Prancha frontal",sets:"3",reps:"45 seg",rest:"30s"},
+        {id:"s2e3",name:"Prancha frontal",sets:"3",reps:"45 seg",rest:"30s",
+          timer:{phases:[{label:"PRANCHA",secs:45,color:"#F0A830"}],rounds:3}},
         {id:"s2e4",name:"Abdominal bicicleta",sets:"3",reps:"20 rep",rest:"30s"},
         {id:"s2e5",name:"Elevação de pernas deitada",sets:"3",reps:"15 rep",rest:"30s"},
-        {id:"s2e6",name:"Prancha lateral (cada lado)",sets:"2",reps:"30 seg",rest:"20s"},
+        {id:"s2e6",name:"Prancha lateral (cada lado)",sets:"2",reps:"30 seg",rest:"20s",
+          timer:{phases:[{label:"PRANCHA",secs:30,color:"#F0A830"}],rounds:2}},
       ]},
     ]
   },
@@ -387,7 +389,8 @@ const DAYS = [
         {id:"s3e7",name:"Elevação lateral com halteres",sets:"3",reps:"15 rep",rest:"45s"},
       ]},
       {title:"Finalizador",time:"8 min",exercises:[
-        {id:"s3e8",name:"Burpee modificado ou step na plataforma",sets:"4",reps:"30 seg",rest:"30s"},
+        {id:"s3e8",name:"Burpee modificado ou step na plataforma",sets:"4",reps:"30 seg",rest:"30s",
+          timer:{phases:[{label:"BURPEE",secs:30,color:"#F26B4E"}],rounds:4}},
       ]},
     ]
   },
