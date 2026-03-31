@@ -240,6 +240,49 @@
   .review-summary-row span:first-child { font-size: 11px; color: var(--muted); }
   .review-summary-row span:last-child { font-size: 13px; color: var(--text2); }
 
+  /* Timer */
+  .timer-toggle {
+    width: 100%; margin-top: 8px; padding: 7px 12px; border-radius: 7px;
+    border: 1px dashed var(--border-hi); background: transparent;
+    color: var(--muted); font-size: 11px; letter-spacing: 1px;
+    text-align: left; transition: all 0.15s;
+  }
+  .timer-toggle:active { opacity: 0.7; }
+  .timer-wrap {
+    margin-top: 8px; padding: 16px; border-radius: 10px;
+    background: var(--surface-hi); border: 1px solid var(--border-hi);
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .timer-ring-wrap { position: relative; width: 140px; height: 140px; }
+  .timer-svg { transform: rotate(-90deg); }
+  .timer-track { fill: none; stroke: var(--border); stroke-width: 8; }
+  .timer-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke 0.4s; }
+  .timer-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
+  }
+  .timer-seconds { font-size: 36px; font-weight: bold; font-family: monospace; line-height: 1; }
+  .timer-phase {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    font-family: monospace;
+  }
+  .timer-info { display: flex; gap: 20px; }
+  .timer-info-item { text-align: center; }
+  .timer-info-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+  .timer-info-val { font-size: 14px; color: var(--text2); font-family: monospace; }
+  .timer-btns { display: flex; gap: 10px; }
+  .timer-btn-main {
+    padding: 10px 28px; border-radius: 8px; border: none;
+    font-size: 14px; font-weight: bold; font-family: inherit;
+    transition: opacity 0.15s; cursor: pointer;
+  }
+  .timer-btn-main:active { opacity: 0.75; }
+  .timer-btn-reset {
+    padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border-hi);
+    background: transparent; color: var(--muted); font-size: 13px;
+    font-family: inherit; cursor: pointer;
+  }
+
   /* Footer */
   .footer { padding: 10px 20px; border-top: 1px solid var(--border); font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 1px; }
 
@@ -302,7 +345,8 @@ const DAYS = [
         {id:"s1e7",name:"Panturrilha em pé na máquina",sets:"3",reps:"20 rep",rest:"30s"},
       ]},
       {title:"Finalizador Cardio",time:"10 min",exercises:[
-        {id:"s1e8",name:"Esteira — intervalado (1 min forte / 1 min moderado)",sets:"5x",reps:"2 min cada rodada",rest:"—"},
+        {id:"s1e8",name:"Esteira — intervalado (1 min forte / 1 min moderado)",sets:"5x",reps:"2 min cada rodada",rest:"—",
+          timer:{phases:[{label:"FORTE",secs:60,color:"#F26B4E"},{label:"MODERADO",secs:60,color:"#4EC9A0"}],rounds:5}},
       ]},
     ]
   },
@@ -315,7 +359,8 @@ const DAYS = [
         {id:"s2e1",name:"Polichinelo + mobilidade de quadril dinâmica",sets:"—",reps:"5 min",rest:"—"},
       ]},
       {title:"HIIT — Cardio Intervalado",time:"25 min",note:"Esteira, bike ou elíptico. Alterne: 40s intenso / 20s recuperação. 20 rodadas.",exercises:[
-        {id:"s2e2",name:"Bloco intenso (velocidade alta ou inclinação máxima)",sets:"20x",reps:"40 seg",rest:"20s"},
+        {id:"s2e2",name:"Bloco intenso (velocidade alta ou inclinação máxima)",sets:"20x",reps:"40 seg",rest:"20s",
+          timer:{phases:[{label:"INTENSO",secs:40,color:"#F26B4E"},{label:"RECUPERAÇÃO",secs:20,color:"#4EC9A0"}],rounds:20}},
       ]},
       {title:"Core",time:"15 min",exercises:[
         {id:"s2e3",name:"Prancha frontal",sets:"3",reps:"45 seg",rest:"30s"},
@@ -522,6 +567,127 @@ function switchTab(tab) {
   if (tab === "review") renderReview();
 }
 
+// ── TIMER STATE ───────────────────────────────────────────────────────
+let activeTimer = null; // { exId, interval, phaseIdx, secsLeft, roundsDone, running, el }
+
+function stopAllTimers() {
+  if (activeTimer) {
+    clearInterval(activeTimer.interval);
+    activeTimer = null;
+  }
+}
+
+function buildTimer(ex, accent) {
+  const cfg = ex.timer;
+  const CIRCUMFERENCE = 2 * Math.PI * 54; // radius=54
+
+  let phaseIdx = 0;
+  let secsLeft = cfg.phases[0].secs;
+  let roundsDone = 0;
+  let running = false;
+  let intervalId = null;
+
+  // SVG ring
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("class","timer-svg");
+  svg.setAttribute("width","140");
+  svg.setAttribute("height","140");
+  svg.setAttribute("viewBox","0 0 140 140");
+
+  const track = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  track.setAttribute("class","timer-track");
+  track.setAttribute("cx","70"); track.setAttribute("cy","70"); track.setAttribute("r","54");
+  svg.appendChild(track);
+
+  const fill = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  fill.setAttribute("class","timer-fill");
+  fill.setAttribute("cx","70"); fill.setAttribute("cy","70"); fill.setAttribute("r","54");
+  fill.setAttribute("stroke-dasharray", CIRCUMFERENCE);
+  fill.setAttribute("stroke-dashoffset","0");
+  svg.appendChild(fill);
+
+  const ringWrap = h("div",{className:"timer-ring-wrap"}, svg);
+
+  const secsEl = h("div",{className:"timer-seconds"}, "0");
+  const phaseEl = h("div",{className:"timer-phase"}, cfg.phases[0].label);
+  const centerEl = h("div",{className:"timer-center"}, secsEl, phaseEl);
+  ringWrap.appendChild(centerEl);
+
+  const roundsVal = h("div",{className:"timer-info-val"}, `0/${cfg.rounds}`);
+  const infoEl = h("div",{className:"timer-info"},
+    h("div",{className:"timer-info-item"},
+      h("div",{className:"timer-info-label"}, "Rounds"),
+      roundsVal
+    )
+  );
+
+  const playBtn = h("button",{className:"timer-btn-main"}, "▶ Iniciar");
+  playBtn.style.background = cfg.phases[0].color;
+  playBtn.style.color = "#0D0D0D";
+
+  const resetBtn = h("button",{className:"timer-btn-reset"}, "↺ Reset");
+
+  function updateUI() {
+    const phase = cfg.phases[phaseIdx];
+    const total = phase.secs;
+    const progress = secsLeft / total;
+    const offset = CIRCUMFERENCE * (1 - progress);
+    fill.setAttribute("stroke-dashoffset", offset);
+    fill.setAttribute("stroke", phase.color);
+    secsEl.textContent = secsLeft;
+    secsEl.style.color = phase.color;
+    phaseEl.textContent = phase.label;
+    phaseEl.style.color = phase.color;
+    playBtn.style.background = phase.color;
+    roundsVal.textContent = `${roundsDone}/${cfg.rounds}`;
+  }
+
+  function tick() {
+    secsLeft--;
+    if (secsLeft < 0) {
+      // next phase
+      phaseIdx = (phaseIdx + 1) % cfg.phases.length;
+      if (phaseIdx === 0) {
+        roundsDone++;
+        // auto-loop forever until paused (rounds just keep going past max)
+      }
+      secsLeft = cfg.phases[phaseIdx].secs;
+    }
+    updateUI();
+  }
+
+  function startTimer() {
+    running = true;
+    playBtn.textContent = "⏸ Pausar";
+    intervalId = setInterval(tick, 1000);
+  }
+
+  function pauseTimer() {
+    running = false;
+    playBtn.textContent = "▶ Continuar";
+    clearInterval(intervalId);
+  }
+
+  playBtn.addEventListener("click", () => {
+    if (running) { pauseTimer(); } else { startTimer(); }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    pauseTimer();
+    phaseIdx = 0;
+    secsLeft = cfg.phases[0].secs;
+    roundsDone = 0;
+    playBtn.textContent = "▶ Iniciar";
+    updateUI();
+  });
+
+  updateUI();
+
+  return h("div",{className:"timer-wrap"}, ringWrap, infoEl,
+    h("div",{className:"timer-btns"}, playBtn, resetBtn)
+  );
+}
+
 // ── RENDER TREINO ─────────────────────────────────────────────────────
 function renderTreino() {
   const d = DAYS[selectedDay];
@@ -718,6 +884,30 @@ function renderTreino() {
       }, circle, name, tags);
       if (done) { item.style.background = d.accentDim.replace("0.12","0.05"); item.style.borderColor = d.accent+"55"; }
       exList.appendChild(item);
+
+      // Timer toggle for interval exercises
+      if (ex.timer) {
+        let timerVisible = false;
+        let timerEl = null;
+        const toggleBtn = h("button",{className:"timer-toggle",
+          onclick: (e) => {
+            e.stopPropagation();
+            timerVisible = !timerVisible;
+            if (timerVisible) {
+              if (!timerEl) {
+                timerEl = buildTimer(ex, d.accent);
+                toggleBtn.after(timerEl);
+              }
+              timerEl.style.display = "flex";
+              toggleBtn.textContent = "⏱ Fechar timer";
+            } else {
+              if (timerEl) timerEl.style.display = "none";
+              toggleBtn.textContent = "⏱ Abrir timer de intervalo";
+            }
+          }
+        }, "⏱ Abrir timer do exercício");
+        exList.appendChild(toggleBtn);
+      }
     });
     blockEl.appendChild(exList);
     content.appendChild(blockEl);
