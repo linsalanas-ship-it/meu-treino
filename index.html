@@ -1,2 +1,932 @@
-# meu-treino
-App de treino diário e semanal
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meu Treino">
+<title>Meu Treino</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #141418; color: #F0EDE8;
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh; min-height: -webkit-fill-available;
+    overscroll-behavior: none;
+  }
+  :root {
+    --bg: #141418; --surface: #1C1C22; --surface-hi: #24242C;
+    --border: #2E2E38; --border-hi: #3E3E4E;
+    --text: #F0EDE8; --text2: #A09C96; --muted: #60606E;
+    --red: #F26B4E; --red-dim: rgba(242,107,78,0.12);
+    --amber: #F0A830; --amber-dim: rgba(240,168,48,0.12);
+    --green: #4EC9A0; --green-dim: rgba(78,201,160,0.12);
+    --slate: #8A8FA8; --slate-dim: rgba(138,143,168,0.12);
+  }
+  button { font-family: inherit; cursor: pointer; }
+  input, textarea { font-family: inherit; }
+  ::-webkit-scrollbar { display: none; }
+  scrollbar-width: none;
+
+  /* Layout */
+  #app { display: flex; flex-direction: column; min-height: 100vh; min-height: -webkit-fill-available; }
+  .header { padding: 20px 20px 12px; border-bottom: 1px solid var(--border); }
+  .header-label { font-size: 10px; letter-spacing: 5px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .header h1 { font-size: 21px; font-weight: normal; }
+  .header h1 em { color: var(--red); }
+  .header p { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .tab-btn {
+    flex: 1; padding: 11px 4px; border: none; border-bottom: 2px solid transparent;
+    background: transparent; color: var(--muted); font-size: 12px;
+    letter-spacing: 0.3px; transition: all 0.15s;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--red); }
+
+  /* Day selector */
+  .day-scroll { display: flex; overflow-x: auto; gap: 5px; padding: 11px 20px; border-bottom: 1px solid var(--border); }
+  .day-btn {
+    flex: 0 0 auto; padding: 7px 12px; border-radius: 6px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    color: var(--muted); font-size: 11px; font-weight: bold;
+    letter-spacing: 2px; transition: all 0.15s;
+  }
+  .day-btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+  /* Content area */
+  .content { padding: 18px 20px 80px; flex: 1; }
+
+  /* Day header */
+  .day-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .day-label-text { font-size: 11px; color: var(--muted); margin-bottom: 2px; letter-spacing: 1px; }
+  .day-focus { font-size: 19px; font-weight: normal; }
+  .type-badge { font-size: 10px; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; margin-bottom: 4px; display: block; text-align: center; }
+  .duration-label { font-size: 11px; color: var(--muted); text-align: right; }
+
+  /* Progress */
+  .progress-wrap { margin-bottom: 14px; }
+  .progress-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; color: var(--muted); }
+  .progress-row.done { color: var(--green); }
+  .progress-bar { height: 3px; background: var(--surface-hi); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  /* Mark section */
+  .mark-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 13px 14px; margin-bottom: 16px;
+  }
+  .mark-section-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--green); font-family: monospace; margin-bottom: 10px; }
+  .mark-date-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .mark-date-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .mark-date-select {
+    flex: 1; background: var(--surface-hi); border: 1px solid var(--border-hi);
+    border-radius: 7px; padding: 8px 10px; color: var(--text);
+    font-family: inherit; font-size: 13px; outline: none;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+  }
+  .mark-date-select:focus { border-color: var(--green); }
+  .trained-tags-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .trained-tag {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--green); background: var(--green-dim);
+    border: 1px solid rgba(78,201,160,0.25); border-radius: 20px; padding: 3px 10px;
+  }
+  .trained-tag-del { background: none; border: none; color: var(--muted); font-size: 13px; padding: 0 0 0 2px; line-height: 1; cursor: pointer; }
+
+  /* Mark button */
+  .mark-btn {
+    width: 100%; padding: 10px; border-radius: 7px; border: none;
+    background: var(--green); color: #0D0D0D; font-size: 13px; font-weight: bold;
+    letter-spacing: 0.3px; transition: opacity 0.15s;
+  }
+  .mark-btn:active { opacity: 0.8; }
+  .mark-btn:disabled { background: var(--surface-hi); color: var(--muted); cursor: default; }
+  .unmark-btn { background: none; border: none; color: var(--muted); font-size: 11px; padding: 0 4px; }
+
+  /* Tip */
+  .tip-box {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    border-radius: 0 8px 8px 0; padding: 10px 14px;
+    font-size: 13px; color: var(--text2); font-style: italic;
+    line-height: 1.65; margin-bottom: 18px;
+  }
+
+  /* Block */
+  .block { margin-bottom: 18px; }
+  .block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .block-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; font-family: monospace; color: var(--accent); }
+  .block-time { font-size: 10px; color: var(--muted); }
+  .block-note { font-size: 12px; color: var(--muted); background: var(--surface-hi); border-radius: 6px; padding: 7px 12px; margin-bottom: 8px; line-height: 1.55; }
+
+  /* Exercise */
+  .ex-list { display: flex; flex-direction: column; gap: 6px; }
+  .ex-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px 13px;
+    display: flex; align-items: center; gap: 11px;
+    transition: all 0.15s; cursor: pointer;
+  }
+  .ex-item.checked { background: rgba(var(--accent-rgb), 0.05); border-color: rgba(var(--accent-rgb), 0.35); }
+  .ex-circle {
+    flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--border-hi); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-size: 11px; color: #fff;
+  }
+  .ex-circle.checked { background: var(--accent); border-color: var(--accent); }
+  .ex-name { font-size: 13.5px; color: var(--text); flex: 1; transition: all 0.15s; }
+  .ex-name.checked { color: var(--muted); text-decoration: line-through; }
+  .ex-tags { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .tag-sets { font-size: 10px; color: var(--text2); background: var(--surface-hi); padding: 2px 7px; border-radius: 4px; }
+  .tag-reps { font-size: 10px; padding: 2px 8px; border-radius: 4px; white-space: nowrap; color: var(--accent); background: var(--accent-dim); }
+  .tag-rest { font-size: 10px; color: var(--muted); }
+
+  /* Calendar */
+  .month-scroll { display: flex; overflow-x: auto; gap: 5px; margin-bottom: 16px; }
+  .month-btn {
+    flex: 0 0 auto; padding: 6px 13px; border-radius: 6px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    color: var(--muted); font-size: 11px; font-weight: bold;
+    letter-spacing: 1px; transition: all 0.15s; position: relative;
+  }
+  .month-btn.active { border-color: var(--red); background: var(--red-dim); color: var(--red); }
+  .month-badge {
+    position: absolute; top: -5px; right: -5px;
+    background: var(--green); color: #000; border-radius: 50%;
+    width: 16px; height: 16px; font-size: 9px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-title { font-size: 18px; font-weight: normal; }
+  .cal-title span { color: var(--muted); font-size: 14px; }
+  .cal-count { font-size: 12px; color: var(--green); }
+  .legend { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .legend-label { font-size: 10px; color: var(--muted); }
+  .dow-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 3px; }
+  .dow-cell { text-align: center; font-size: 10px; color: var(--muted); padding: 3px 0; letter-spacing: 1px; }
+  .week-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 3px; }
+  .cal-day {
+    height: 38px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .cal-day.empty { background: transparent; border: none; }
+  .cal-day.weekend { background: var(--surface-hi); }
+  .cal-day.is-start { background: var(--red); border-color: var(--red); }
+  .cal-day.is-trained { background: var(--green); border-color: rgba(78,201,160,0.55); }
+  .cal-day.is-upgrade { background: var(--amber); border-color: var(--amber); }
+  .cal-day-num { font-size: 12px; color: var(--text2); }
+  .cal-day.is-start .cal-day-num,
+  .cal-day.is-trained .cal-day-num,
+  .cal-day.is-upgrade .cal-day-num { color: #fff; font-weight: bold; }
+  .cal-day.weekend .cal-day-num { color: var(--muted); }
+  .cal-day-sub { font-size: 7px; color: rgba(255,255,255,0.75); line-height: 1; }
+
+  /* Trained list */
+  .trained-list { margin-top: 16px; }
+  .trained-list-title { font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+  .trained-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; border-radius: 7px; margin-bottom: 5px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .trained-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .trained-date { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .trained-focus { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trained-del { background: none; border: none; color: var(--muted); font-size: 14px; padding: 2px 6px; border-radius: 4px; }
+
+  /* Upgrade note */
+  .upgrade-note {
+    margin-top: 18px; padding: 12px 14px; background: var(--surface);
+    border: 1px solid var(--border); border-left: 3px solid var(--amber);
+    border-radius: 0 8px 8px 0;
+  }
+  .upgrade-note-title { font-size: 10px; color: var(--amber); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; font-family: monospace; }
+  .upgrade-note p { font-size: 12px; color: var(--text2); line-height: 1.65; }
+
+  /* Review */
+  .review-month-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .review-title { font-size: 18px; font-weight: normal; }
+  .review-title span { color: var(--green); }
+  .review-count { font-size: 11px; color: var(--green); background: var(--green-dim); padding: 3px 10px; border-radius: 20px; }
+  .review-fields { display: flex; flex-direction: column; gap: 13px; }
+  .num-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+  .field-label { display: block; font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; font-family: monospace; }
+  .field-input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 9px 10px; color: var(--text);
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .field-input:focus { border-color: var(--green); }
+  .field-textarea {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; color: var(--text);
+    font-family: inherit; font-size: 13px; outline: none;
+    resize: vertical; line-height: 1.6; min-height: 80px;
+  }
+  .field-textarea:focus { border-color: var(--green); }
+  .review-summary {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--green); border-radius: 0 8px 8px 0;
+    padding: 12px 14px; margin-top: 2px;
+  }
+  .review-summary-title { font-size: 10px; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+  .review-summary-row { margin-bottom: 6px; }
+  .review-summary-row span:first-child { font-size: 11px; color: var(--muted); }
+  .review-summary-row span:last-child { font-size: 13px; color: var(--text2); }
+
+  /* Footer */
+  .footer { padding: 10px 20px; border-top: 1px solid var(--border); font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 1px; }
+
+  /* Hidden */
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-label">Plano Semanal · Academia · 2026</div>
+    <h1>Meu Treino — <em>Perda de Gordura</em></h1>
+    <p>29 anos · 74 kg · 1,64 m · Intermediária</p>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('treino')">🏋️ Treino</button>
+    <button class="tab-btn" onclick="switchTab('calendar')">📅 Calendário</button>
+    <button class="tab-btn" onclick="switchTab('review')">📊 Review</button>
+  </div>
+
+  <!-- TAB: TREINO -->
+  <div id="tab-treino">
+    <div class="day-scroll" id="day-scroll"></div>
+    <div class="content" id="treino-content"></div>
+  </div>
+
+  <!-- TAB: CALENDAR -->
+  <div id="tab-calendar" class="hidden">
+    <div class="content" id="calendar-content" style="padding-top:16px;"></div>
+  </div>
+
+  <!-- TAB: REVIEW -->
+  <div id="tab-review" class="hidden">
+    <div class="content" id="review-content" style="padding-top:16px;"></div>
+  </div>
+
+  <div class="footer">Consulte um profissional de educação física para ajustes individuais</div>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────
+const DAYS = [
+  {
+    day:"SEG", label:"Segunda-feira", focus:"Musculação — Inferior",
+    type:"musculação", accent:"#F26B4E", accentDim:"rgba(242,107,78,0.12)", duration:"55 min",
+    tip:"Priorize execução limpa. Menos peso com mais controle ativa mais fibras musculares e gasta mais energia.",
+    blocks:[
+      {title:"Aquecimento",time:"5 min",exercises:[
+        {id:"s1e1",name:"Esteira (caminhada acelerada ou trote leve)",sets:"—",reps:"5 min contínuos",rest:"—"},
+      ]},
+      {title:"Circuito Metabólico — Inferior",time:"40 min",note:"Execute os exercícios em sequência com descanso curto. 3–4 rounds.",exercises:[
+        {id:"s1e2",name:"Agachamento livre com barra",sets:"4",reps:"12 rep",rest:"60s"},
+        {id:"s1e3",name:"Leg press 45°",sets:"3",reps:"15 rep",rest:"60s"},
+        {id:"s1e4",name:"Cadeira extensora",sets:"3",reps:"15 rep",rest:"45s"},
+        {id:"s1e5",name:"Mesa flexora",sets:"3",reps:"12 rep",rest:"45s"},
+        {id:"s1e6",name:"Afundo com halteres (cada perna)",sets:"3",reps:"10 rep",rest:"60s"},
+        {id:"s1e7",name:"Panturrilha em pé na máquina",sets:"3",reps:"20 rep",rest:"30s"},
+      ]},
+      {title:"Finalizador Cardio",time:"10 min",exercises:[
+        {id:"s1e8",name:"Esteira — intervalado (1 min forte / 1 min moderado)",sets:"5x",reps:"2 min cada rodada",rest:"—"},
+      ]},
+    ]
+  },
+  {
+    day:"TER", label:"Terça-feira", focus:"Cardio HIIT + Core",
+    type:"cardio", accent:"#F0A830", accentDim:"rgba(240,168,48,0.12)", duration:"45 min",
+    tip:"Nos blocos intensos, você deve estar perto do seu limite. Se conseguir conversar normalmente, aumente a intensidade.",
+    blocks:[
+      {title:"Aquecimento",time:"5 min",exercises:[
+        {id:"s2e1",name:"Polichinelo + mobilidade de quadril dinâmica",sets:"—",reps:"5 min",rest:"—"},
+      ]},
+      {title:"HIIT — Cardio Intervalado",time:"25 min",note:"Esteira, bike ou elíptico. Alterne: 40s intenso / 20s recuperação. 20 rodadas.",exercises:[
+        {id:"s2e2",name:"Bloco intenso (velocidade alta ou inclinação máxima)",sets:"20x",reps:"40 seg",rest:"20s"},
+      ]},
+      {title:"Core",time:"15 min",exercises:[
+        {id:"s2e3",name:"Prancha frontal",sets:"3",reps:"45 seg",rest:"30s"},
+        {id:"s2e4",name:"Abdominal bicicleta",sets:"3",reps:"20 rep",rest:"30s"},
+        {id:"s2e5",name:"Elevação de pernas deitada",sets:"3",reps:"15 rep",rest:"30s"},
+        {id:"s2e6",name:"Prancha lateral (cada lado)",sets:"2",reps:"30 seg",rest:"20s"},
+      ]},
+    ]
+  },
+  {
+    day:"QUA", label:"Quarta-feira", focus:"Musculação — Superior",
+    type:"musculação", accent:"#F26B4E", accentDim:"rgba(242,107,78,0.12)", duration:"55 min",
+    tip:"Alternar peito e costas mantém a frequência cardíaca elevada — efeito metabólico sem cardio extra.",
+    blocks:[
+      {title:"Aquecimento",time:"5 min",exercises:[
+        {id:"s3e1",name:"Remada leve na polia ou elíptico",sets:"—",reps:"5 min",rest:"—"},
+      ]},
+      {title:"Circuito Superior",time:"42 min",exercises:[
+        {id:"s3e2",name:"Supino reto com barra",sets:"4",reps:"10–12 rep",rest:"60s"},
+        {id:"s3e3",name:"Puxada frontal (pulley)",sets:"4",reps:"12 rep",rest:"60s"},
+        {id:"s3e4",name:"Desenvolvimento com halteres",sets:"3",reps:"12 rep",rest:"60s"},
+        {id:"s3e5",name:"Remada curvada com barra",sets:"3",reps:"12 rep",rest:"60s"},
+        {id:"s3e6",name:"Crucifixo na polia (cabo)",sets:"3",reps:"12 rep",rest:"45s"},
+        {id:"s3e7",name:"Elevação lateral com halteres",sets:"3",reps:"15 rep",rest:"45s"},
+      ]},
+      {title:"Finalizador",time:"8 min",exercises:[
+        {id:"s3e8",name:"Burpee modificado ou step na plataforma",sets:"4",reps:"30 seg",rest:"30s"},
+      ]},
+    ]
+  },
+  {
+    day:"QUI", label:"Quinta-feira", focus:"Descanso Ativo",
+    type:"descanso", accent:"#4EC9A0", accentDim:"rgba(78,201,160,0.12)", duration:"30–40 min",
+    tip:"Descanso ativo acelera a recuperação muscular e mantém o gasto calórico sem estressar o corpo.",
+    blocks:[
+      {title:"Opções — escolha uma",time:"30–40 min",exercises:[
+        {id:"s4e1",name:"Caminhada ao ar livre em ritmo confortável",sets:"—",reps:"30–40 min",rest:"—"},
+        {id:"s4e2",name:"Yoga ou alongamento guiado",sets:"—",reps:"30 min",rest:"—"},
+        {id:"s4e3",name:"Natação leve",sets:"—",reps:"30 min",rest:"—"},
+      ]},
+    ]
+  },
+  {
+    day:"SEX", label:"Sexta-feira", focus:"Full Body + Cardio",
+    type:"musculação", accent:"#F26B4E", accentDim:"rgba(242,107,78,0.12)", duration:"60 min",
+    tip:"Full body no final da semana garante que todos os grupos musculares recebam estímulo duas vezes.",
+    blocks:[
+      {title:"Aquecimento",time:"5 min",exercises:[
+        {id:"s5e1",name:"Esteira ou bike leve",sets:"—",reps:"5 min",rest:"—"},
+      ]},
+      {title:"Circuito Full Body",time:"40 min",note:"4 rounds. Execute em sequência com descanso mínimo entre exercícios.",exercises:[
+        {id:"s5e2",name:"Agachamento goblet com kettlebell",sets:"4",reps:"15 rep",rest:"30s"},
+        {id:"s5e3",name:"Flexão de braço (adapte se necessário)",sets:"4",reps:"12 rep",rest:"30s"},
+        {id:"s5e4",name:"Remada unilateral com halter",sets:"4",reps:"12 rep (cada lado)",rest:"30s"},
+        {id:"s5e5",name:"Avanço alternado com peso",sets:"3",reps:"10 rep (cada perna)",rest:"30s"},
+        {id:"s5e6",name:"Desenvolvimento arnold com halteres",sets:"3",reps:"12 rep",rest:"45s"},
+        {id:"s5e7",name:"Prancha com toque no ombro",sets:"3",reps:"20 rep",rest:"30s"},
+      ]},
+      {title:"Cardio Final",time:"15 min",exercises:[
+        {id:"s5e8",name:"Bike ergométrica — ritmo moderado-forte constante",sets:"—",reps:"15 min contínuos",rest:"—"},
+      ]},
+    ]
+  },
+  {
+    day:"SAB", label:"Sábado", focus:"Cardio Leve + Mobilidade",
+    type:"cardio", accent:"#F0A830", accentDim:"rgba(240,168,48,0.12)", duration:"40 min",
+    tip:"Sábado é sobre manter o corpo em movimento sem sobrecarregar. Vai fazer diferença na recuperação da semana.",
+    blocks:[
+      {title:"Cardio de Baixa Intensidade",time:"25 min",exercises:[
+        {id:"s6e1",name:"Caminhada na esteira com leve inclinação (3–5%)",sets:"—",reps:"25 min",rest:"—"},
+      ]},
+      {title:"Mobilidade e Alongamento",time:"15 min",exercises:[
+        {id:"s6e2",name:"Alongamento de isquiotibiais",sets:"2",reps:"40 seg cada",rest:"—"},
+        {id:"s6e3",name:"Abertura de quadril (posição pombo)",sets:"2",reps:"40 seg cada lado",rest:"—"},
+        {id:"s6e4",name:"Rotação torácica deitada",sets:"2",reps:"10 rep cada lado",rest:"—"},
+        {id:"s6e5",name:"Alongamento de peitoral na parede",sets:"2",reps:"30 seg cada",rest:"—"},
+      ]},
+    ]
+  },
+  {
+    day:"DOM", label:"Domingo", focus:"Descanso Total",
+    type:"descanso", accent:"#8A8FA8", accentDim:"rgba(138,143,168,0.12)", duration:"—",
+    tip:"O músculo cresce e a gordura é metabolizada no repouso. Respeitar esse dia faz parte do treino.",
+    blocks:[
+      {title:"Descanso completo",time:"—",exercises:[
+        {id:"s7e1",name:"Nenhum treino programado — descanse bem",sets:"—",reps:"✦",rest:"—"},
+      ]},
+    ]
+  },
+];
+
+const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho"];
+const MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun"];
+const DOW_PT = ["D","S","T","Q","Q","S","S"];
+const DOW_NAMES = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const UPGRADE_DATES = [{month:4,day:1},{month:5,day:1}];
+const START = {month:3,day:1};
+const MARCH_PARTIAL_START = 25; // show only last week of March
+
+const REVIEW_FIELDS = [
+  {key:"peso",label:"Peso (kg)",placeholder:"Ex: 73.2",isNum:true},
+  {key:"cintura",label:"Cintura (cm)",placeholder:"Ex: 82",isNum:true},
+  {key:"quadril",label:"Quadril (cm)",placeholder:"Ex: 100",isNum:true},
+  {key:"energia",label:"Energia & disposição",placeholder:"Como você está se sentindo?"},
+  {key:"diferenca",label:"Diferenças que notei",placeholder:"Roupas mais folgadas, mais resistência..."},
+  {key:"desafios",label:"Desafios do mês",placeholder:"O que foi difícil?"},
+  {key:"metas",label:"Metas para o próximo mês",placeholder:"O que quero melhorar?"},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────
+let currentTab = "treino";
+let selectedDay = 0;
+let activeMonth = 2; // start on March
+let checked = {};
+let trainedDays = {};
+let reviews = {};
+
+// ── STORAGE ───────────────────────────────────────────────────────────
+function save() {
+  try {
+    localStorage.setItem("treino-checked", JSON.stringify(checked));
+    localStorage.setItem("treino-trained", JSON.stringify(trainedDays));
+    localStorage.setItem("treino-reviews", JSON.stringify(reviews));
+  } catch(e) {}
+}
+function load() {
+  try {
+    const c = localStorage.getItem("treino-checked");
+    const t = localStorage.getItem("treino-trained");
+    const r = localStorage.getItem("treino-reviews");
+    if (c) checked = JSON.parse(c);
+    if (t) trainedDays = JSON.parse(t);
+    if (r) reviews = JSON.parse(r);
+  } catch(e) {}
+}
+
+// ── CALENDAR BUILDER ──────────────────────────────────────────────────
+function buildCal(mi) {
+  const year = 2026;
+  const firstDay = new Date(year, mi, 1).getDay();
+  const daysInMonth = new Date(year, mi+1, 0).getDate();
+  const cells = [];
+  for (let i=0;i<firstDay;i++) cells.push(0);
+  for (let d=1;d<=daysInMonth;d++) cells.push(d);
+  while(cells.length%7!==0) cells.push(0);
+  const weeks=[];
+  for(let i=0;i<cells.length;i+=7) weeks.push(cells.slice(i,i+7));
+  return {weeks, daysInMonth};
+}
+
+function dateKey(mi, day) {
+  return `2026-${String(mi+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+function isUpgrade(mi, day) { return UPGRADE_DATES.some(u=>u.month===mi&&u.day===day); }
+
+function todayKey() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+}
+
+function trainedCountForMonth(mi) {
+  const prefix = `2026-${String(mi+1).padStart(2,"0")}-`;
+  return Object.keys(trainedDays).filter(k=>k.startsWith(prefix)).length;
+}
+
+// ── RENDER HELPERS ────────────────────────────────────────────────────
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) {
+    for (const [k,v] of Object.entries(attrs)) {
+      if (k === "style" && typeof v === "object") {
+        for (const [sk,sv] of Object.entries(v)) el.style[sk] = sv;
+      } else if (k.startsWith("on")) {
+        el.addEventListener(k.slice(2).toLowerCase(), v);
+      } else if (k === "className") {
+        el.className = v;
+      } else {
+        el.setAttribute(k, v);
+      }
+    }
+  }
+  for (const child of children.flat()) {
+    if (child == null) continue;
+    if (typeof child === "string" || typeof child === "number") {
+      el.appendChild(document.createTextNode(String(child)));
+    } else {
+      el.appendChild(child);
+    }
+  }
+  return el;
+}
+
+// ── SWITCH TAB ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  ["treino","calendar","review"].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle("hidden", t !== tab);
+  });
+  document.querySelectorAll(".tab-btn").forEach((btn, i) => {
+    btn.classList.toggle("active", ["treino","calendar","review"][i] === tab);
+  });
+  if (tab === "treino") renderTreino();
+  if (tab === "calendar") renderCalendar();
+  if (tab === "review") renderReview();
+}
+
+// ── RENDER TREINO ─────────────────────────────────────────────────────
+function renderTreino() {
+  const d = DAYS[selectedDay];
+
+  // Day scroll buttons
+  const scroll = document.getElementById("day-scroll");
+  scroll.innerHTML = "";
+  DAYS.forEach((item, i) => {
+    const btn = h("button", {
+      className: "day-btn" + (i === selectedDay ? " active" : ""),
+      style: i === selectedDay ? {"--accent": item.accent, "--accent-dim": item.accentDim} : {},
+      onclick: () => { selectedDay = i; renderTreino(); }
+    }, item.day);
+    if (i === selectedDay) {
+      btn.style.borderColor = item.accent;
+      btn.style.background = item.accentDim;
+      btn.style.color = item.accent;
+    }
+    scroll.appendChild(btn);
+  });
+
+  const allIds = d.blocks.flatMap(b => b.exercises.map(e => e.id));
+  const doneCount = allIds.filter(id => checked[id]).length;
+  const totalCount = allIds.length;
+
+  const tk = todayKey();
+  const alreadyMarked = !!trainedDays[tk];
+
+  const content = document.getElementById("treino-content");
+  content.innerHTML = "";
+
+  // Day header
+  const header = h("div", {className:"day-header"},
+    h("div", null,
+      h("div", {className:"day-label-text"}, d.label),
+      h("div", {className:"day-focus"}, d.focus)
+    ),
+    h("div", {style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px"}},
+      h("span", {className:"type-badge", style:{background:d.accentDim, color:d.accent}},
+        {musculação:"🏋️ Musculação",cardio:"🔥 Cardio",descanso:"🌿 Descanso"}[d.type]
+      ),
+      d.duration !== "—" ? h("span", {className:"duration-label"}, "⏱ " + d.duration) : null
+    )
+  );
+  content.appendChild(header);
+
+  // Progress bar
+  const pRow = h("div", {className:"progress-row" + (doneCount===totalCount ? " done":"")},
+    h("span",null,"Progresso"),
+    h("span",null, doneCount+"/"+totalCount + (doneCount===totalCount?" ✓ Concluído!":""))
+  );
+  const pFill = h("div",{className:"progress-fill",style:{width:`${totalCount>0?(doneCount/totalCount*100):0}%`,background:d.accent}});
+  const pBar = h("div",{className:"progress-bar"},pFill);
+  content.appendChild(h("div",{className:"progress-wrap"},pRow,pBar));
+
+  // ── DATE PICKER + MARK SECTION
+  const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho"];
+
+  // Build month select (Apr–Jun 2026 = months 3–5)
+  const monthSel = h("select", {className:"mark-date-select"});
+  [2,3,4,5].forEach(mi => {
+    const opt = document.createElement("option");
+    opt.value = mi;
+    opt.textContent = monthNames[mi];
+    monthSel.appendChild(opt);
+  });
+  // Default to today's month if in range, else April
+  const nowM = new Date().getMonth();
+  monthSel.value = (nowM >= 2 && nowM <= 5) ? nowM : 3;
+
+  // Build day select
+  const daySel = h("select", {className:"mark-date-select"});
+  function rebuildDays() {
+    const mi = parseInt(monthSel.value);
+    const daysInMonth = new Date(2026, mi+1, 0).getDate();
+    daySel.innerHTML = "";
+    for (let d=1; d<=daysInMonth; d++) {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = d;
+      daySel.appendChild(opt);
+    }
+    // Default to today's date if same month
+    const now = new Date();
+    if (now.getMonth() === mi && now.getFullYear() === 2026) daySel.value = now.getDate();
+  }
+  monthSel.addEventListener("change", rebuildDays);
+  rebuildDays();
+
+  // Helper: get currently selected key
+  function selectedKey() {
+    const mi = parseInt(monthSel.value);
+    const day = parseInt(daySel.value);
+    return dateKey(mi, day);
+  }
+
+  // Trained tags for this workout day (all keys matching this day's focus)
+  function getTagsForDay() {
+    return Object.entries(trainedDays)
+      .filter(([,v]) => v.dayLabel === d.day)
+      .sort(([a],[b]) => a.localeCompare(b));
+  }
+
+  const tagsRow = h("div", {className:"trained-tags-row"});
+  function renderTags() {
+    tagsRow.innerHTML = "";
+    getTagsForDay().forEach(([k, v]) => {
+      const parts = k.split("-");
+      const mi = parseInt(parts[1]) - 1;
+      const day = parseInt(parts[2]);
+      const dowObj = new Date(k+"T12:00:00");
+      const label = `${["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][dowObj.getDay()]} ${day}/${mi+1}`;
+      const delBtn = h("button", {className:"trained-tag-del", onclick: (e) => {
+        e.stopPropagation();
+        delete trainedDays[k]; save(); renderTags(); updateMarkBtn();
+      }}, "×");
+      tagsRow.appendChild(h("span", {className:"trained-tag"}, "✓ "+label, delBtn));
+    });
+  }
+
+  const markBtn = h("button", {className:"mark-btn", onclick: () => {
+    const k = selectedKey();
+    trainedDays[k] = {focus: d.focus, type: d.type, dayLabel: d.day};
+    save(); renderTags(); updateMarkBtn();
+    markBtn.textContent = "✓ Registrado!";
+    setTimeout(() => { markBtn.textContent = "Registrar no calendário"; }, 1500);
+  }}, "Registrar no calendário");
+
+  function updateMarkBtn() {
+    const k = selectedKey();
+    if (trainedDays[k]) {
+      markBtn.textContent = "✓ Já registrado";
+      markBtn.disabled = true;
+      markBtn.style.background = "var(--surface-hi)";
+      markBtn.style.color = "var(--muted)";
+    } else {
+      markBtn.textContent = "Registrar no calendário";
+      markBtn.disabled = false;
+      markBtn.style.background = "var(--green)";
+      markBtn.style.color = "#0D0D0D";
+    }
+  }
+  monthSel.addEventListener("change", () => { rebuildDays(); updateMarkBtn(); });
+  daySel.addEventListener("change", updateMarkBtn);
+  updateMarkBtn();
+
+  const markSection = h("div", {className:"mark-section"},
+    h("div", {className:"mark-section-title"}, "Registrar treino"),
+    h("div", {className:"mark-date-row"},
+      h("span", {className:"mark-date-label"}, "Data"),
+      monthSel,
+      daySel
+    ),
+    markBtn,
+    tagsRow
+  );
+  renderTags();
+  content.appendChild(markSection);
+
+  // Tip
+  content.appendChild(h("div",{className:"tip-box",style:{borderLeftColor:d.accent}}, d.tip));
+
+  // Blocks
+  d.blocks.forEach(block => {
+    const blockEl = h("div",{className:"block"});
+    blockEl.appendChild(
+      h("div",{className:"block-header"},
+        h("span",{className:"block-title",style:{color:d.accent}}, block.title),
+        block.time !== "—" ? h("span",{className:"block-time"}, block.time) : null
+      )
+    );
+    if (block.note) blockEl.appendChild(h("div",{className:"block-note"},block.note));
+
+    const exList = h("div",{className:"ex-list"});
+    block.exercises.forEach(ex => {
+      const done = !!checked[ex.id];
+      const circle = h("div",{className:"ex-circle"+(done?" checked":"")}, done?"✓":"");
+      if (done) { circle.style.background = d.accent; circle.style.borderColor = d.accent; }
+      const name = h("span",{className:"ex-name"+(done?" checked":"")}, ex.name);
+      const tags = h("div",{className:"ex-tags"});
+      if (ex.sets !== "—") tags.appendChild(h("span",{className:"tag-sets"},ex.sets+" séries"));
+      if (ex.reps !== "✦") {
+        const rt = h("span",{className:"tag-reps"},ex.reps);
+        rt.style.color = d.accent; rt.style.background = d.accentDim;
+        tags.appendChild(rt);
+      }
+      if (ex.rest !== "—") tags.appendChild(h("span",{className:"tag-rest"},"desc "+ex.rest));
+
+      const item = h("div",{className:"ex-item"+(done?" checked":""),
+        onclick: () => {
+          checked[ex.id] = !checked[ex.id];
+          save(); renderTreino();
+        }
+      }, circle, name, tags);
+      if (done) { item.style.background = d.accentDim.replace("0.12","0.05"); item.style.borderColor = d.accent+"55"; }
+      exList.appendChild(item);
+    });
+    blockEl.appendChild(exList);
+    content.appendChild(blockEl);
+  });
+}
+
+// ── RENDER CALENDAR ───────────────────────────────────────────────────
+function renderCalendar() {
+  const content = document.getElementById("calendar-content");
+  content.innerHTML = "";
+
+  // Month scroll
+  const monthScroll = h("div",{className:"month-scroll"});
+  MONTHS_PT.forEach((name, mi) => {
+    const count = trainedCountForMonth(mi);
+    const btn = h("button",{
+      className:"month-btn"+(mi===activeMonth?" active":""),
+      onclick: () => { activeMonth = mi; renderCalendar(); }
+    }, MONTHS_SHORT[mi]);
+    if (count > 0) {
+      const badge = h("div",{className:"month-badge"}, String(count));
+      btn.appendChild(badge);
+    }
+    monthScroll.appendChild(btn);
+  });
+  content.appendChild(monthScroll);
+
+  const mi = activeMonth;
+  const isMarch = mi === 2;
+  const {weeks: allWeeks} = buildCal(mi);
+  // For March, only show weeks that contain day 25+
+  const weeks = isMarch
+    ? allWeeks.filter(w => w.some(d => d >= MARCH_PARTIAL_START))
+    : allWeeks;
+  const prefix = `2026-${String(mi+1).padStart(2,"0")}-`;
+  const monthTrained = Object.keys(trainedDays).filter(k=>k.startsWith(prefix)).length;
+
+  // Cal header
+  const countLabel = monthTrained > 0
+    ? `${monthTrained} treino${monthTrained>1?"s":""} realizado${monthTrained>1?"s":""}`
+    : "nenhum treino registrado";
+  content.appendChild(h("div",{className:"cal-header"},
+    h("h3",{className:"cal-title"}, isMarch ? "Março — última semana" : MONTHS_PT[mi], " ", h("span",null,"2026")),
+    h("span",{className:"cal-count"}, countLabel)
+  ));
+
+  // Legend
+  const legend = h("div",{className:"legend"});
+  [{color:"#F26B4E",label:"Início"},{color:"#4EC9A0",label:"Treino feito"},{color:"#F0A830",label:"Evolução"}].forEach(l=>{
+    legend.appendChild(h("div",{className:"legend-item"},
+      h("div",{className:"legend-dot",style:{background:l.color}}),
+      h("span",{className:"legend-label"},l.label)
+    ));
+  });
+  content.appendChild(legend);
+
+  // DOW headers
+  const dowRow = h("div",{className:"dow-row"});
+  DOW_PT.forEach(wd => dowRow.appendChild(h("div",{className:"dow-cell"},wd)));
+  content.appendChild(dowRow);
+
+  // Weeks
+  weeks.forEach(week => {
+    const row = h("div",{className:"week-row"});
+    week.forEach((day, di) => {
+      if (day === 0) { row.appendChild(h("div",{className:"cal-day empty"})); return; }
+      const key = dateKey(mi, day);
+      const isStart = mi===START.month && day===START.day;
+      const isUpg = isUpgrade(mi, day);
+      const isTrained = !!trainedDays[key];
+      const isWeekend = di===0||di===6;
+
+      let cls = "cal-day";
+      if (isStart) cls += " is-start";
+      else if (isTrained) cls += " is-trained";
+      else if (isUpg) cls += " is-upgrade";
+      else if (isWeekend) cls += " weekend";
+
+      const cell = h("div",{className:cls},
+        h("span",{className:"cal-day-num"}, String(day))
+      );
+      if (isTrained && trainedDays[key]?.dayLabel) {
+        cell.appendChild(h("span",{className:"cal-day-sub"}, trainedDays[key].dayLabel));
+      }
+      if (isUpg && !isTrained) {
+        cell.appendChild(h("span",{className:"cal-day-sub"}, "EVOLUÇÃO"));
+      }
+      row.appendChild(cell);
+    });
+    content.appendChild(row);
+  });
+
+  // Trained list
+  const entries = Object.entries(trainedDays).filter(([k])=>k.startsWith(prefix)).sort(([a],[b])=>a.localeCompare(b));
+  if (entries.length > 0) {
+    const list = h("div",{className:"trained-list"});
+    list.appendChild(h("div",{className:"trained-list-title"},"Treinos registrados"));
+    entries.forEach(([k,v]) => {
+      const dayNum = parseInt(k.split("-")[2]);
+      const dateObj = new Date(k+"T12:00:00");
+      const dowLabel = DOW_NAMES[dateObj.getDay()];
+      const delBtn = h("button",{className:"trained-del",onclick:()=>{ delete trainedDays[k]; save(); renderCalendar(); }},"×");
+      list.appendChild(h("div",{className:"trained-item"},
+        h("div",{className:"trained-dot"}),
+        h("span",{className:"trained-date"}, `${dowLabel}, ${dayNum} de ${MONTHS_PT[mi]}`),
+        h("span",{className:"trained-focus"}, v.focus||""),
+        delBtn
+      ));
+    });
+    content.appendChild(list);
+  }
+
+  // Upgrade note
+  content.appendChild(h("div",{className:"upgrade-note"},
+    h("div",{className:"upgrade-note-title"},"Datas de evolução"),
+    h("p",null,"Após ~4 semanas, o corpo se adapta e o gasto calórico do mesmo treino diminui. Nas datas em âmbar, revisamos o plano — cargas, exercícios ou split — para manter o progresso ativo.")
+  ));
+}
+
+// ── RENDER REVIEW ─────────────────────────────────────────────────────
+function renderReview() {
+  const content = document.getElementById("review-content");
+  content.innerHTML = "";
+
+  content.appendChild(h("div",{style:{fontSize:"10px",letterSpacing:"4px",color:"var(--muted)",textTransform:"uppercase",marginBottom:"12px"}},
+    "Acompanhamento Mensal"
+  ));
+
+  // Month scroll
+  const monthScroll = h("div",{className:"month-scroll"});
+  MONTHS_PT.forEach((name, mi) => {
+    const count = trainedCountForMonth(mi);
+    const btn = h("button",{
+      className:"month-btn"+(mi===activeMonth?" active":""),
+      style: mi===activeMonth ? {borderColor:"var(--green)",background:"var(--green-dim)",color:"var(--green)"} : {},
+      onclick: () => { activeMonth = mi; renderReview(); }
+    }, MONTHS_SHORT[mi]);
+    if (mi===activeMonth) { btn.style.borderColor="#4EC9A0"; btn.style.background="rgba(78,201,160,0.12)"; btn.style.color="#4EC9A0"; }
+    if (count > 0) btn.appendChild(h("span",{style:{marginLeft:"5px",fontSize:"10px",color:"#4EC9A0"}}, `(${count})`));
+    monthScroll.appendChild(btn);
+  });
+  content.appendChild(monthScroll);
+
+  const mi = activeMonth;
+  const count = trainedCountForMonth(mi);
+  const row = h("div",{className:"review-month-row"},
+    h("h3",{className:"review-title"}, "Review — ", h("span",null, MONTHS_PT[mi]))
+  );
+  if (count > 0) row.appendChild(h("span",{className:"review-count"}, `${count} treinos`));
+  content.appendChild(row);
+
+  const fields = h("div",{className:"review-fields"});
+
+  // Numeric grid
+  const numGrid = h("div",{className:"num-grid"});
+  REVIEW_FIELDS.filter(f=>f.isNum).forEach(f => {
+    const val = (reviews[mi]||{})[f.key]||"";
+    const input = h("input",{className:"field-input",type:"text",placeholder:f.placeholder,value:val});
+    input.addEventListener("input", e => {
+      if (!reviews[mi]) reviews[mi]={};
+      reviews[mi][f.key] = e.target.value;
+      save();
+    });
+    numGrid.appendChild(h("div",null,
+      h("label",{className:"field-label"},f.label),
+      input
+    ));
+  });
+  fields.appendChild(numGrid);
+
+  // Text areas
+  REVIEW_FIELDS.filter(f=>!f.isNum).forEach(f => {
+    const val = (reviews[mi]||{})[f.key]||"";
+    const ta = h("textarea",{className:"field-textarea",placeholder:f.placeholder,rows:"3"}, val);
+    ta.value = val;
+    ta.addEventListener("input", e => {
+      if (!reviews[mi]) reviews[mi]={};
+      reviews[mi][f.key] = e.target.value;
+      save();
+    });
+    fields.appendChild(h("div",null,
+      h("label",{className:"field-label"},f.label),
+      ta
+    ));
+  });
+
+  // Summary
+  const rev = reviews[mi]||{};
+  if (Object.values(rev).some(v=>v)) {
+    const summary = h("div",{className:"review-summary"},
+      h("div",{className:"review-summary-title"}, "Resumo de "+MONTHS_PT[mi])
+    );
+    REVIEW_FIELDS.forEach(f => {
+      const val = rev[f.key];
+      if (!val) return;
+      summary.appendChild(h("div",{className:"review-summary-row"},
+        h("span",null, f.label+": "),
+        h("span",null, val)
+      ));
+    });
+    fields.appendChild(summary);
+  }
+
+  content.appendChild(fields);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+load();
+renderTreino();
+</script>
+</body>
+</html>
